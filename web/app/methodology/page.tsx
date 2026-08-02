@@ -36,6 +36,42 @@ const articleLd = {
   about: ["ERCOT", "interconnection queue", "Texas counties"],
 };
 
+const SOURCES = [
+  {
+    name: "ERCOT GIS Report",
+    detail: "Generator Interconnection Status — monthly public filing (reportTypeId 15933).",
+    href: "https://www.ercot.com/mp/data-products/data-product-details?id=pg7-200-er",
+    secondary: {
+      label: "MIS file list",
+      href: "https://www.ercot.com/misapp/GetReports.do?reportTypeId=15933",
+    },
+  },
+  {
+    name: "Census TIGER/Line",
+    detail: "Texas county cartographic boundaries used for polygon ∩ county joins.",
+    href: "https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html",
+  },
+  {
+    name: "Interconnection timelines",
+    detail: "Our measured screening→energization medians from GIS history (zone × fuel).",
+    href: "https://interconnection-queue.kardashevlabs.org/interconnection-timelines",
+  },
+  {
+    name: "ERCOT LMP / zone stress",
+    detail: "Settled LMP history rolled into load-zone negative-hour and volatility series in kardashev-data.",
+    href: "https://data.kardashevlabs.org/docs",
+  },
+  {
+    name: "Large-load context",
+    detail: "LLWG / LFLTF decks — zone aggregates only. No project-level load locations.",
+    href: "https://www.ercot.com/committees/stakeholder/llwg",
+    secondary: {
+      label: "KL large-load tracker",
+      href: "https://large-load.kardashevlabs.org",
+    },
+  },
+] as const;
+
 export default function MethodologyPage() {
   return (
     <div className="doc-page">
@@ -57,74 +93,195 @@ export default function MethodologyPage() {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }}
         />
         <article className="doc-article">
-          <h1>Methodology</h1>
-          <p className="doc-lede">
-            Draw a search area, say how many MW you want (gen or large load), get a strong / mixed /
-            weak read. Everything here is from public filings and LMP history. It is not an ERCOT
-            interconnection study, and we will not pretend otherwise.
-          </p>
+          <header className="doc-hero">
+            <p className="doc-kicker">How the grade is made</p>
+            <h1>Methodology</h1>
+            <p className="doc-lede">
+              You draw a search area. We tell you whether that MW looks strong, mixed, or weak on
+              public interconnection and price history — and we show the knobs.
+            </p>
+            <p className="doc-callout">
+              This is not an ERCOT interconnection study. If someone treats the grade as an IA
+              result, they are wrong. We built a screening tool, not a study shop.
+            </p>
+          </header>
 
-          <section>
-            <h2>Geography</h2>
+          <section className="doc-section">
+            <h2>The short version</h2>
+            <ol className="doc-steps">
+              <li>
+                <span className="doc-step-n" aria-hidden="true">
+                  01
+                </span>
+                <div>
+                  <h3>Clip to Texas counties</h3>
+                  <p>
+                    Your polygon has to stay inside Texas. We intersect it with Census county
+                    shapes. Anything that spills into Mexico or out of state gets rejected.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span className="doc-step-n" aria-hidden="true">
+                  02
+                </span>
+                <div>
+                  <h3>Pull the county queue</h3>
+                  <p>
+                    GIS filings name a county, not a lat/lon pin. So pending projects and MW come
+                    from whole counties that make up enough of your search area (tiny edge clips
+                    stay on the map, drop out of the grade).
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span className="doc-step-n" aria-hidden="true">
+                  03
+                </span>
+                <div>
+                  <h3>Stack timelines + prices</h3>
+                  <p>
+                    Peer screening→energization medians for the dominant CDR zone / fuel, plus
+                    trailing LMP stress for the mapped load zone. Those three inputs vote. Wire
+                    physics and SCED curtailment do not — yet.
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </section>
+
+          <section className="doc-section">
+            <h2>Geography, without the fairy tale</h2>
             <p>
-              GIS generator rows have a county field. They do not have lat/lon. We intersect your
-              polygon with Census TIGER Texas counties, then pull projects in those counties. If you
-              only clip a corner of a county, the map shows the overlap; queue stats still use
-              whole-county projects for that county when it clears the coverage floor. We do not
-              invent project pins. Polygons that spill outside Texas are rejected.
+              ERCOT’s public generator queue is county-resolution. Midland County is not a point on
+              a map; it is a polygon with every pending project that listed “Midland.” If your
+              search covers 60% Midland and 40% Martin, both counties can feed the score, and the
+              map paints the overlap so you can see what we counted.
+            </p>
+            <p>
+              We do not invent project pins from bus names or substations in v1. When we can geocode
+              POIs honestly, the map will get sharper. Until then, county is the honest unit.
             </p>
           </section>
 
-          <section>
-            <h2>What the v1 grade uses</h2>
-            <ul>
+          <section className="doc-section">
+            <h2>What enters the grade</h2>
+            <div className="doc-grid">
+              <div className="doc-tile">
+                <h3>Queue pressure</h3>
+                <p>
+                  Pending (never energized) GIS projects and MW in scored counties, from the latest{" "}
+                  <a
+                    href="https://www.ercot.com/mp/data-products/data-product-details?id=pg7-200-er"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    GIS Report
+                  </a>
+                  .
+                </p>
+              </div>
+              <div className="doc-tile">
+                <h3>Peer timelines</h3>
+                <p>
+                  Measured medians from ~97 months of GIS history. Browse the same series on our{" "}
+                  <a
+                    href="https://interconnection-queue.kardashevlabs.org/interconnection-timelines"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    timelines tool
+                  </a>
+                  .
+                </p>
+              </div>
+              <div className="doc-tile">
+                <h3>Market stress</h3>
+                <p>
+                  Trailing-year negative-price hours, RT volatility, RT−DA spread for the mapped{" "}
+                  <span className="mono">LZ_*</span> load zone. CDR labels like COASTAL map to the
+                  nearest published series.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="doc-section">
+            <h2>What stays out (on purpose)</h2>
+            <ul className="doc-out">
               <li>
-                <strong>Queue pressure.</strong> Pending GIS projects (never energized) and MW in
-                counties that make up enough of your search area, from the latest GIS_Report
-                snapshot. Tiny slivers stay on the map but drop out of the grade.
+                <strong>Wire / power-flow stress</strong>
+                <span>Phase C. Public-model OPF scenarios are not in the grade.</span>
               </li>
               <li>
-                <strong>Peer timelines.</strong> Screening→energization medians from ~97 months of
-                GIS history, by CDR zone and fuel. Sample size is shown when we have it.
+                <strong>SCED curtailment</strong>
+                <span>Resource-level 60-day disclosure not ingested yet.</span>
               </li>
               <li>
-                <strong>Market stress.</strong> Trailing-year LMP numbers for the mapped settlement
-                load zone: share of negative-price hours, volatility, RT−DA spread. CDR labels like
-                COASTAL or PANHANDLE map to the nearest published LZ_* series.
+                <strong>Large-load project pins</strong>
+                <span>
+                  ERCOT does not publish them. Load mode is coarse zone context — see{" "}
+                  <a
+                    href="https://www.ercot.com/committees/stakeholder/llwg"
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    LLWG
+                  </a>
+                  .
+                </span>
               </li>
             </ul>
           </section>
 
-          <section>
-            <h2>What stays out of the grade</h2>
-            <ul>
-              <li>Wire / power-flow stress. That is Phase C; the panel says so.</li>
-              <li>Resource-level SCED curtailment. Same: not ingested yet.</li>
-              <li>
-                Project-level large-load locations. ERCOT does not publish them, so large-load mode
-                is coarse zone context only.
-              </li>
-            </ul>
-          </section>
-
-          <section>
+          <section className="doc-section">
             <h2>Sources</h2>
-            <ul>
-              <li>ERCOT Generator Interconnection Status (GIS) Report, reportTypeId 15933</li>
-              <li>Census TIGER/Line county cartographic boundaries</li>
-              <li>ERCOT LMP history rolled into zone stress series</li>
-              <li>ERCOT LLWG/LFLTF large-load decks (coarse context only)</li>
+            <p className="doc-sources-intro">
+              Everything we score on is public. Click through if you want the filings, not our
+              summary.
+            </p>
+            <ul className="doc-sources">
+              {SOURCES.map((s) => (
+                <li key={s.name}>
+                  <a href={s.href} rel="noopener noreferrer" target="_blank" className="doc-source-name">
+                    {s.name}
+                  </a>
+                  <p>{s.detail}</p>
+                  {"secondary" in s && s.secondary ? (
+                    <a
+                      href={s.secondary.href}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      className="doc-source-more"
+                    >
+                      {s.secondary.label} →
+                    </a>
+                  ) : null}
+                </li>
+              ))}
             </ul>
           </section>
 
-          <p className="doc-footer">
-            Built by{" "}
-            <a href="https://kardashevlabs.org" rel="noopener noreferrer" target="_blank">
-              Kardashev Labs
-            </a>
-            . Score endpoint: <span className="mono">POST /clearance/score</span> on
-            data.kardashevlabs.org once deployed.
-          </p>
+          <footer className="doc-footer">
+            <p>
+              Built by{" "}
+              <a href="https://kardashevlabs.org" rel="noopener noreferrer" target="_blank">
+                Kardashev Labs
+              </a>
+              . Score API:{" "}
+              <a
+                href="https://data.kardashevlabs.org/docs"
+                rel="noopener noreferrer"
+                target="_blank"
+                className="mono"
+              >
+                POST /clearance/score
+              </a>
+            </p>
+            <Link href="/" className="doc-cta">
+              Draw a search area →
+            </Link>
+          </footer>
         </article>
       </main>
     </div>
