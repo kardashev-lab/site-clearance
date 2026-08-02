@@ -88,7 +88,7 @@ const jsonLd = {
       url: siteUrl,
       applicationCategory: "BusinessApplication",
       operatingSystem: "Any",
-      browserRequirements: "Requires JavaScript and a pointer or touch screen for map drawing. County picker works with keyboard.",
+      browserRequirements: "Requires JavaScript and a pointer or touch screen for map drawing.",
       description,
       isAccessibleForFree: true,
       provider: { "@id": "https://kardashevlabs.org/#organization" },

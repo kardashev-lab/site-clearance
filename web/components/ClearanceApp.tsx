@@ -56,11 +56,6 @@ function featurePolygon(
   return null;
 }
 
-type CountiesFc = GeoJSON.FeatureCollection<
-  GeoJSON.Polygon | GeoJSON.MultiPolygon,
-  { name: string; geoid?: string }
->;
-
 function labelMapControls(root: HTMLElement | null) {
   if (!root) return;
   const pairs: [string, string][] = [
@@ -84,7 +79,6 @@ export function ClearanceApp() {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const drawRef = useRef<MapboxDraw | null>(null);
   const polygonRef = useRef<GeoJSON.Polygon | GeoJSON.MultiPolygon | null>(null);
-  const countiesFcRef = useRef<CountiesFc | null>(null);
 
   const [mode, setMode] = useState<"gen" | "load">("gen");
   const [mw, setMw] = useState("200");
@@ -97,8 +91,6 @@ export function ClearanceApp() {
   const [copied, setCopied] = useState(false);
   /** Full controls only after a search area exists (and until user hides them). */
   const [hudOpen, setHudOpen] = useState(false);
-  const [countyNames, setCountyNames] = useState<string[]>([]);
-  const [pickedCounty, setPickedCounty] = useState("");
   const [coarsePointer, setCoarsePointer] = useState(false);
   const restored = useRef(false);
   const countyHitsRef = useRef<CountyHit[]>([]);
@@ -116,27 +108,6 @@ export function ClearanceApp() {
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/tx_counties.geojson")
-      .then((r) => r.json())
-      .then((fc: CountiesFc) => {
-        if (cancelled) return;
-        countiesFcRef.current = fc;
-        const names = fc.features
-          .map((f) => f.properties?.name)
-          .filter((n): n is string => !!n)
-          .sort((a, b) => a.localeCompare(b));
-        setCountyNames(names);
-      })
-      .catch(() => {
-        /* county picker optional if asset missing */
-      });
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const fitTexas = useCallback((animate = false) => {
@@ -379,59 +350,7 @@ export function ClearanceApp() {
       }
     }
     setPolygon(null);
-    setPickedCounty("");
   }, [setPolygon]);
-
-  const applySearchPolygon = useCallback(
-    (poly: GeoJSON.Polygon | GeoJSON.MultiPolygon, countyName?: string) => {
-      const draw = drawRef.current;
-      const map = mapRef.current;
-      if (draw) {
-        draw.deleteAll();
-        draw.add({
-          type: "Feature",
-          properties: {},
-          geometry: poly,
-        });
-      }
-      setPickedCounty(countyName ?? "");
-      setPolygon(poly);
-      if (map) {
-        const bounds = new maplibregl.LngLatBounds();
-        const rings =
-          poly.type === "Polygon" ? poly.coordinates : poly.coordinates.flatMap((r) => r);
-        for (const ring of rings) {
-          for (const c of ring) bounds.extend(c as [number, number]);
-        }
-        if (!bounds.isEmpty()) {
-          map.fitBounds(bounds, {
-            padding: { top: 48, bottom: 48, left: hudOpenRef.current ? 400 : 48, right: 48 },
-            maxZoom: 9,
-            animate: true,
-          });
-        }
-      }
-    },
-    [setPolygon],
-  );
-
-  const onPickCounty = useCallback(
-    (name: string) => {
-      if (!name) return;
-      const fc = countiesFcRef.current;
-      const feat = fc?.features.find((f) => f.properties?.name === name);
-      const geom = feat?.geometry;
-      if (!geom || (geom.type !== "Polygon" && geom.type !== "MultiPolygon")) {
-        setError("Could not load that county boundary.");
-        return;
-      }
-      setError(null);
-      hudOpenRef.current = true;
-      setHudOpen(true);
-      applySearchPolygon(geom, name);
-    },
-    [applySearchPolygon],
-  );
 
   useEffect(() => {
     if (!mapNode.current || mapRef.current) return;
@@ -538,12 +457,10 @@ export function ClearanceApp() {
                 .map((f) => f.id)
                 .filter((id): id is string | number => id != null),
             );
-            setPickedCounty("");
             syncFromDraw(ids);
           });
           map.on("draw.update", () => syncFromDraw());
           map.on("draw.delete", () => {
-            setPickedCounty("");
             syncFromDraw();
           });
           map.on("draw.modechange", (e: { mode?: string }) => {
@@ -658,7 +575,6 @@ export function ClearanceApp() {
   function clearDraw() {
     const draw = drawRef.current;
     draw?.deleteAll();
-    setPickedCounty("");
     setPolygon(null);
     try {
       draw?.changeMode("draw_polygon");
@@ -705,41 +621,19 @@ export function ClearanceApp() {
           .join(" · ")
       : null;
 
-  const countyPicker = countyNames.length > 0 && (
-    <div className="field">
-      <label htmlFor="county-pick">Or pick a Texas county</label>
-      <select
-        id="county-pick"
-        value={pickedCounty}
-        onChange={(e) => onPickCounty(e.target.value)}
-      >
-        <option value="">Select county…</option>
-        {countyNames.map((n) => (
-          <option key={n} value={n}>
-            {n}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-
   return (
     <div className={`workspace${score ? " has-results" : ""}`}>
       <div
         ref={mapNode}
         className="map-root"
         role="application"
-        aria-label="ERCOT map. Draw a search polygon with pointer or touch, or pick a county in the controls."
+        aria-label="ERCOT map. Draw a search polygon with pointer or touch."
       />
 
       {!hasPolygon && (
         <div className="hud-cue" role="status">
           <strong>Draw a search area</strong>
           <span>{drawHint}</span>
-          <span className="hint">
-            Map drawing needs a pointer or touch. Keyboard: pick a county below.
-          </span>
-          {countyPicker}
           {error && (
             <div className="error" role="alert">
               {error}
@@ -807,8 +701,6 @@ export function ClearanceApp() {
               </select>
             </div>
           )}
-
-          {countyPicker}
 
           <div className="actions">
             <button

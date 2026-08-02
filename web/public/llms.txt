@@ -6,7 +6,7 @@ Site Clearance is a free public tool. Generator projects in ERCOT GIS filings ha
 
 ## Pages
 
-- [Map tool](https://clearance.kardashevlabs.org/): draw polygon or pick a county, score generation or coarse large-load MW
+- [Map tool](https://clearance.kardashevlabs.org/): draw a polygon, score generation or coarse large-load MW
 - [Methodology](https://clearance.kardashevlabs.org/methodology): geography, grade inputs, exclusions, sources
 
 ## Related

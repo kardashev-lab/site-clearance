@@ -29,10 +29,9 @@ export default function HomePage() {
           ERCOT Site Clearance — county-level interconnection estimate
         </h1>
         <p className="sr-only">
-          Draw a search area on the map or pick a Texas county with the keyboard. Score generation
-          or large-load MW using GIS queue pressure, measured peer timelines, and LMP market stress.
-          Public data only. Not an official ERCOT interconnection study. Full method on the
-          Methodology page.
+          Draw a search area on the map. Score generation or large-load MW using GIS queue pressure,
+          measured peer timelines, and LMP market stress. Public data only. Not an official ERCOT
+          interconnection study. Full method on the Methodology page.
         </p>
         <ClearanceApp />
       </main>
