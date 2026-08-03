@@ -1,20 +1,24 @@
 # Site Clearance (Kardashev Labs)
 
-> Draw a search area in ERCOT and get a county-level strong / mixed / weak clearance estimate from public GIS queue data, measured interconnection timelines, and LMP market stress. Not an official ERCOT interconnection study.
+> Draw a search area in ERCOT. Get a county-level strong / mixed / weak grade from public GIS queue data, measured interconnection timelines, and LMP stress. Not an official ERCOT study.
 
-Site Clearance is a free public tool. Generator projects in ERCOT GIS filings have county, not lat/lon, so scores are county-resolution. Wire stress and SCED curtailment are not in the v1 grade.
+Generator GIS filings name a county, not a lat/lon, so the grade is county-resolution. Wire stress and SCED curtailment are not in the v1 score.
 
 ## Pages
 
-- [Map tool](https://clearance.kardashevlabs.org/): draw a polygon, score generation or coarse large-load MW
-- [Methodology](https://clearance.kardashevlabs.org/methodology): geography, grade inputs, exclusions, sources
+- https://clearance.kardashevlabs.org: map tool
+- https://clearance.kardashevlabs.org/methodology: how the grade is built
 
 ## Related
 
-- [Kardashev Labs](https://kardashevlabs.org/)
-- [Interconnection timelines](https://interconnection-queue.kardashevlabs.org/interconnection-timelines)
-- Score API: `POST https://data.kardashevlabs.org/clearance/score` (when deployed)
+- https://large-load-tracker.kardashevlabs.org : ERCOT large-load queue context
+- https://interconnection-queue.kardashevlabs.org/interconnection-timelines : peer timelines
+- https://interconnection-queue.kardashevlabs.org : all-ISO queue search
+- https://docs.kardashevlabs.org
+- https://kardashevlabs.org
+- Score API: `POST https://data.kardashevlabs.org/clearance/score`
 
 ## Optional
 
-- [Sitemap](https://clearance.kardashevlabs.org/sitemap.xml)
+- Sitemap: https://clearance.kardashevlabs.org/sitemap.xml
+- llms.txt: https://clearance.kardashevlabs.org/llms.txt

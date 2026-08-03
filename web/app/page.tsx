@@ -26,7 +26,7 @@ export default function HomePage() {
       </header>
       <main id="main-content">
         <h1 className="sr-only">
-          ERCOT Site Clearance — county-level interconnection estimate
+          ERCOT Site Clearance: county-level interconnection estimate
         </h1>
         <p className="sr-only">
           Draw a search area on the map. Score generation or large-load MW using GIS queue pressure,

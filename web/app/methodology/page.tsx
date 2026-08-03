@@ -39,7 +39,7 @@ const articleLd = {
 const SOURCES = [
   {
     name: "ERCOT GIS Report",
-    detail: "Generator Interconnection Status — monthly public filing (reportTypeId 15933).",
+    detail: "Generator Interconnection Status: monthly public filing (reportTypeId 15933).",
     href: "https://www.ercot.com/mp/data-products/data-product-details?id=pg7-200-er",
     secondary: {
       label: "MIS file list",
@@ -53,7 +53,7 @@ const SOURCES = [
   },
   {
     name: "Interconnection timelines",
-    detail: "Our measured screening→energization medians from GIS history (zone × fuel).",
+    detail: "Our measured screening-to-energization medians from GIS history (zone × fuel).",
     href: "https://interconnection-queue.kardashevlabs.org/interconnection-timelines",
   },
   {
@@ -63,11 +63,11 @@ const SOURCES = [
   },
   {
     name: "Large-load context",
-    detail: "LLWG / LFLTF decks — zone aggregates only. No project-level load locations.",
+    detail: "LLWG / LFLTF decks: zone aggregates only. No project-level load locations.",
     href: "https://www.ercot.com/committees/stakeholder/llwg",
     secondary: {
       label: "KL large-load tracker",
-      href: "https://large-load.kardashevlabs.org",
+      href: "https://large-load-tracker.kardashevlabs.org",
     },
   },
 ] as const;
@@ -97,12 +97,12 @@ export default function MethodologyPage() {
             <p className="doc-kicker">How the grade is made</p>
             <h1>Methodology</h1>
             <p className="doc-lede">
-              You draw a search area. We tell you whether that MW looks strong, mixed, or weak on
-              public interconnection and price history — and we show the knobs.
+              You draw a search area. We grade that MW strong, mixed, or weak from public
+              queue and price history, and we show which inputs drove the grade.
             </p>
             <p className="doc-callout">
-              This is not an ERCOT interconnection study. If someone treats the grade as an IA
-              result, they are wrong. We built a screening tool, not a study shop.
+              This is not an ERCOT interconnection study. Treating the grade like an IA
+              result is wrong. Screening tool only.
             </p>
           </header>
 
@@ -141,9 +141,10 @@ export default function MethodologyPage() {
                 <div>
                   <h3>Stack timelines + prices</h3>
                   <p>
-                    Peer screening→energization medians for the dominant CDR zone / fuel, plus
-                    trailing LMP stress for the mapped load zone. Those three inputs vote. Wire
-                    physics and SCED curtailment do not — yet.
+                    Peer screening-to-energization medians for the dominant CDR zone and fuel,
+                    plus trailing LMP stress for the mapped load zone. Queue, timelines, and
+                    prices each contribute to the grade. Wire physics and SCED curtailment are
+                    not in yet.
                   </p>
                 </div>
               </li>
@@ -151,16 +152,17 @@ export default function MethodologyPage() {
           </section>
 
           <section className="doc-section">
-            <h2>Geography, without the fairy tale</h2>
+            <h2>Geography (county resolution)</h2>
             <p>
-              ERCOT’s public generator queue is county-resolution. Midland County is not a point on
-              a map; it is a polygon with every pending project that listed “Midland.” If your
-              search covers 60% Midland and 40% Martin, both counties can feed the score, and the
-              map paints the overlap so you can see what we counted.
+              ERCOT&apos;s public generator queue is county-resolution. Midland County is not a
+              point on a map; it is a polygon with every pending project that listed
+              &quot;Midland.&quot; If your search covers 60% Midland and 40% Martin, both counties
+              can feed the score, and the map paints the overlap so you can see what we counted.
             </p>
             <p>
-              We do not invent project pins from bus names or substations in v1. When we can geocode
-              POIs honestly, the map will get sharper. Until then, county is the honest unit.
+              We do not invent project pins from bus names or substations in v1. When we can
+              geocode POIs honestly, the map will get sharper. Until then, county is the honest
+              unit.
             </p>
           </section>
 
@@ -220,7 +222,7 @@ export default function MethodologyPage() {
               <li>
                 <strong>Large-load project pins</strong>
                 <span>
-                  ERCOT does not publish them. Load mode is coarse zone context — see{" "}
+                  ERCOT does not publish them. Load mode is coarse zone context; see{" "}
                   <a
                     href="https://www.ercot.com/committees/stakeholder/llwg"
                     rel="noopener noreferrer"
@@ -237,8 +239,8 @@ export default function MethodologyPage() {
           <section className="doc-section">
             <h2>Sources</h2>
             <p className="doc-sources-intro">
-              Everything we score on is public. Click through if you want the filings, not our
-              summary.
+              Everything in the grade comes from public filings. Links below go to the sources,
+              not our paraphrase.
             </p>
             <ul className="doc-sources">
               {SOURCES.map((s) => (

@@ -195,7 +195,7 @@ export function ResultsPanel({
         {slivers.length > 0 && (
           <p className="hint" style={{ marginTop: 6 }}>
             Map-only slivers (&lt;{Math.round((score.queue.min_score_coverage ?? 0.05) * 100)}%
-            of search area): {slivers.join(", ")} — excluded from queue stats.
+            of search area): {slivers.join(", ")} (excluded from queue stats).
           </p>
         )}
       </Details>
