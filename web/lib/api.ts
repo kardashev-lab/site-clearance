@@ -9,6 +9,8 @@ export type Comparison = {
   baseline_label: string;
   unit: "share" | "years" | string;
   sample_n?: number;
+  scope?: string | null;
+  scope_label?: string | null;
 };
 
 export type ClearanceScore = {
@@ -68,6 +70,8 @@ export type ClearanceScore = {
       total_mw: number | null;
     } | null;
     peer_baseline_years?: number | null;
+    peer_scope?: string | null;
+    peer_scope_label?: string | null;
   };
   market_stress: {
     load_zone: string;

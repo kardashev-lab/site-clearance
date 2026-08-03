@@ -104,7 +104,11 @@ function Meter({
   );
 }
 
-function queueTone(comp: Comparison | undefined, pendingMw: number): { tone: Tone; chip: string } {
+function queueTone(
+  comp: Comparison | undefined,
+  pendingMw: number,
+): { tone: Tone; chip: string } {
+  if (pendingMw <= 0) return { tone: "good", chip: "empty" };
   if (comp?.value != null) {
     if (comp.value >= 0.15) return { tone: "bad", chip: "busy" };
     if (comp.value <= 0.03) return { tone: "good", chip: "light" };
@@ -178,9 +182,17 @@ export function ResultsPanel({
     score.counties.filter((c) => c.in_score !== false).map((c) => c.name);
   const slivers = score.queue.sliver_counties ?? [];
   const fuel = score.input.fuel;
-  const peerYrs = score.timelines.fuel?.median_years ?? score.timelines.zone?.median_years;
-  const peerN = score.timelines.fuel?.sample_count ?? score.timelines.zone?.sample_count;
+  const peerYrs =
+    score.timelines.zone?.median_years ??
+    score.timelines.fuel?.median_years;
+  const peerN =
+    score.timelines.zone?.sample_count ??
+    score.timelines.fuel?.sample_count;
   const peerBase = score.timelines.peer_baseline_years;
+  const peerScopeLabel =
+    score.timelines.peer_scope_label ||
+    comps.peer_years?.scope_label ||
+    null;
   const neg = score.market_stress?.mean_pct_hours_rt_negative;
   const negBase = score.market_stress?.ercot_avg_pct_hours_rt_negative;
 
@@ -190,14 +202,21 @@ export function ResultsPanel({
 
   const queueShare = comps.queue_share_of_zone?.value;
   const queueDetail =
-    queueShare != null
-      ? `${(queueShare * 100).toFixed(0)}% of zone pending · ${score.queue.pending_mw.toLocaleString(undefined, { maximumFractionDigits: 0 })} MW`
-      : `${score.queue.pending_mw.toLocaleString(undefined, { maximumFractionDigits: 0 })} MW pending`;
+    score.queue.pending_mw <= 0
+      ? "No pending GIS projects in scored counties"
+      : queueShare != null
+        ? `${(queueShare * 100).toFixed(0)}% of zone pending · ${score.queue.pending_mw.toLocaleString(undefined, { maximumFractionDigits: 0 })} MW`
+        : `${score.queue.pending_mw.toLocaleString(undefined, { maximumFractionDigits: 0 })} MW pending`;
 
-  const timelineDetail =
+  const timelineDetail = [
+    peerScopeLabel,
     peerBase != null && peerYrs != null
-      ? `ERCOT zone median ${peerBase.toFixed(1)} yr · n=${peerN ?? "—"}`
-      : `n=${peerN ?? "—"}`;
+      ? `ERCOT zone median ${peerBase.toFixed(1)} yr`
+      : null,
+    `n=${peerN ?? "—"}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const marketDetail =
     negBase != null ? `ERCOT avg ${pct(negBase)} · ${score.queue.dominant_cdr_zone ?? "—"}` : score.queue.dominant_cdr_zone ?? "—";
