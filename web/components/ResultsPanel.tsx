@@ -1,7 +1,9 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { ClearanceScore } from "@/lib/api";
+import type { ClearanceScore, Comparison } from "@/lib/api";
+
+type Tone = "good" | "warn" | "bad" | "neutral";
 
 function pct(n: number | null | undefined): string {
   if (n == null || Number.isNaN(n)) return "—";
@@ -17,10 +19,12 @@ function Details({
   title,
   children,
   defaultOpen = false,
+  summary,
 }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  summary?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = useId();
@@ -33,7 +37,10 @@ function Details({
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
       >
-        <span>{title}</span>
+        <span className="details-toggle-text">
+          <span>{title}</span>
+          {!open && summary ? <span className="details-summary">{summary}</span> : null}
+        </span>
         <span className="mono" aria-hidden="true">
           {open ? "−" : "+"}
         </span>
@@ -47,6 +54,106 @@ function Details({
   );
 }
 
+function SignalCard({
+  label,
+  tone,
+  chip,
+  value,
+  detail,
+}: {
+  label: string;
+  tone: Tone;
+  chip: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className={`signal tone-${tone}`}>
+      <div className="signal-top">
+        <span className="signal-label">{label}</span>
+        <span className={`signal-chip tone-${tone}`}>{chip}</span>
+      </div>
+      <b className="mono signal-value">{value}</b>
+      <span className="signal-detail">{detail}</span>
+    </div>
+  );
+}
+
+function Meter({
+  label,
+  value,
+  max = 1,
+  tone = "neutral",
+}: {
+  label: string;
+  value: number;
+  max?: number;
+  tone?: Tone;
+}) {
+  const width = Math.max(0, Math.min(100, (value / max) * 100));
+  return (
+    <div className="meter">
+      <div className="meter-head">
+        <span>{label}</span>
+        <span className="mono">{value.toFixed(2)}</span>
+      </div>
+      <div className="meter-track" aria-hidden="true">
+        <div className={`meter-fill tone-${tone}`} style={{ width: `${width}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function queueTone(comp: Comparison | undefined, pendingMw: number): { tone: Tone; chip: string } {
+  if (comp?.value != null) {
+    if (comp.value >= 0.15) return { tone: "bad", chip: "busy" };
+    if (comp.value <= 0.03) return { tone: "good", chip: "light" };
+    return { tone: "warn", chip: "moderate" };
+  }
+  if (pendingMw >= 2000) return { tone: "bad", chip: "busy" };
+  if (pendingMw <= 200) return { tone: "good", chip: "light" };
+  return { tone: "warn", chip: "moderate" };
+}
+
+function timelineTone(
+  years: number | null | undefined,
+  n: number | null | undefined,
+): { tone: Tone; chip: string } {
+  if (years == null || (n != null && n < 20)) return { tone: "neutral", chip: "thin n" };
+  if (years >= 3.7) return { tone: "bad", chip: "slow" };
+  if (years <= 3.0) return { tone: "good", chip: "faster" };
+  return { tone: "warn", chip: "typical" };
+}
+
+function marketTone(neg: number | null | undefined): { tone: Tone; chip: string } {
+  if (neg == null) return { tone: "neutral", chip: "n/a" };
+  if (neg >= 0.08) return { tone: "bad", chip: "elevated" };
+  if (neg <= 0.02) return { tone: "good", chip: "calm" };
+  return { tone: "warn", chip: "moderate" };
+}
+
+/** UI label for PF impact — avoid "stressed" when absolute loading is still low. */
+function pfImpactLabel(
+  level: string | undefined,
+  maxLoading: number | null | undefined,
+): { chip: string; tone: Tone } {
+  const load = maxLoading ?? 0;
+  if (level === "stressed" && load < 0.75) {
+    return { chip: "elevated impact", tone: "warn" };
+  }
+  if (level === "stressed") return { chip: "high impact", tone: "bad" };
+  if (level === "moderate") return { chip: "moderate impact", tone: "warn" };
+  if (level === "calm") return { chip: "low impact", tone: "good" };
+  return { chip: level ?? "proxy", tone: "neutral" };
+}
+
+function densityChip(level: string | undefined): string {
+  if (level === "sparse") return "sparse lines";
+  if (level === "dense") return "dense lines";
+  if (level === "typical") return "typical density";
+  return level ?? "proxy";
+}
+
 export function ResultsPanel({
   score,
   onClose,
@@ -57,13 +164,15 @@ export function ResultsPanel({
   onShare: () => void;
 }) {
   const g = score.verdict.grade;
+  const comps = score.verdict.comparisons ?? {};
   const actions = score.verdict.actions?.length
     ? score.verdict.actions
     : score.verdict.drivers.slice(0, 3);
+  // One tight line — avoid the API's semicolon-joined action dump.
   const headline =
-    score.verdict.headline ||
-    actions.join("; ") ||
-    score.verdict.summary;
+    g === "mixed" && actions.length >= 2
+      ? `${actions[0]} · ${actions[1]}`
+      : actions[0] || score.verdict.headline || score.verdict.summary;
   const scoredCounties =
     score.queue.attribution_counties ??
     score.counties.filter((c) => c.in_score !== false).map((c) => c.name);
@@ -75,18 +184,58 @@ export function ResultsPanel({
   const neg = score.market_stress?.mean_pct_hours_rt_negative;
   const negBase = score.market_stress?.ercot_avg_pct_hours_rt_negative;
 
+  const q = queueTone(comps.queue_share_of_zone, score.queue.pending_mw);
+  const t = timelineTone(peerYrs, peerN);
+  const m = marketTone(neg);
+
+  const queueShare = comps.queue_share_of_zone?.value;
+  const queueDetail =
+    queueShare != null
+      ? `${(queueShare * 100).toFixed(0)}% of zone pending · ${score.queue.pending_mw.toLocaleString(undefined, { maximumFractionDigits: 0 })} MW`
+      : `${score.queue.pending_mw.toLocaleString(undefined, { maximumFractionDigits: 0 })} MW pending`;
+
+  const timelineDetail =
+    peerBase != null && peerYrs != null
+      ? `ERCOT zone median ${peerBase.toFixed(1)} yr · n=${peerN ?? "—"}`
+      : `n=${peerN ?? "—"}`;
+
+  const marketDetail =
+    negBase != null ? `ERCOT avg ${pct(negBase)} · ${score.queue.dominant_cdr_zone ?? "—"}` : score.queue.dominant_cdr_zone ?? "—";
+
+  const pf = score.wire_stress.power_flow;
+  const dens = score.wire_stress.density;
+  const pfImpact =
+    pf?.status === "proxy"
+      ? pfImpactLabel(pf.level, pf.max_loading_pu)
+      : null;
+  const densLevel = dens?.level ?? score.wire_stress.density?.level;
+  const wireSummaryParts: string[] = [];
+  if (pfImpact && pf) {
+    wireSummaryParts.push(
+      `DC ${pf.max_loading_pu != null ? `${pf.max_loading_pu.toFixed(2)} pu` : "—"} · ${pfImpact.chip}`,
+    );
+  }
+  if (dens?.status === "proxy" || score.wire_stress.status === "proxy") {
+    const vs = dens?.vs_texas_median ?? score.wire_stress.vs_texas_median;
+    wireSummaryParts.push(
+      `HIFLD ${densityChip(densLevel)}${vs != null ? ` (${vs.toFixed(2)}×)` : ""}`,
+    );
+  }
+  const wireSummary = wireSummaryParts.join(" · ") || "Wire proxies";
+
+  const topBranches = pf?.counties?.[0]?.scenario?.top_branches ?? [];
   const gradeLabel =
     g === "strong" ? "Strong clearance signal" : g === "weak" ? "Weak clearance signal" : "Mixed clearance signal";
 
   return (
     <aside className="results" aria-live="polite" aria-label="Clearance results">
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+      <div className="results-toolbar">
         <div className="grade">
           <span className={`grade-pill ${g}`} title={gradeLabel}>
             {g}
           </span>
           <span className="sr-only">{gradeLabel}. </span>
-          <span className="mono">as of {score.as_of}</span>
+          <span className="mono as-of">as of {score.as_of}</span>
         </div>
         <div className="actions">
           <button type="button" className="btn" onClick={onShare}>
@@ -103,86 +252,73 @@ export function ResultsPanel({
         {score.input.mw.toLocaleString()} MW
         {fuel ? ` ${fuel}` : " large load"} · {scoredCounties.slice(0, 3).join(", ")}
         {scoredCounties.length > 3 ? "…" : ""}
-        {score.queue.driver_county ? ` · score driven by ${score.queue.driver_county}` : ""}
+        {score.queue.driver_county ? ` · driven by ${score.queue.driver_county}` : ""}
       </p>
-      <p className="disclaimer">{score.verdict.disclaimer}</p>
+      <p className="honesty-line">
+        County public data · not an ERCOT study ·{" "}
+        <a href="/methodology">methodology</a>
+      </p>
 
       <div className="section">
-        <h3>What to expect</h3>
-        <ul className="action-list">
-          {actions.map((a) => (
-            <li key={a}>{a}</li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="section">
-        <h3>Key numbers</h3>
-        <div className="stat-grid">
-          <div className="stat">
-            <b className="mono">
-              {score.queue.pending_mw.toLocaleString(undefined, { maximumFractionDigits: 0 })} MW
-            </b>
-            <span>Pending in scored counties</span>
-          </div>
-          <div className="stat">
-            <b className="mono">{yrs(peerYrs)}</b>
-            <span>
-              Peer median
-              {peerBase != null ? ` (ERCOT ${peerBase.toFixed(1)} yr)` : ""}
-            </span>
-          </div>
-          <div className="stat">
-            <b className="mono">{pct(neg)}</b>
-            <span>
-              Neg. price hours
-              {negBase != null ? ` (ERCOT ${pct(negBase)})` : ""}
-            </span>
-          </div>
-          <div className="stat">
-            <b className="mono">{score.queue.dominant_cdr_zone ?? "—"}</b>
-            <span>Dominant CDR zone</span>
-          </div>
+        <h3>Grade signals</h3>
+        <div className="signal-row">
+          <SignalCard
+            label="Queue"
+            tone={q.tone}
+            chip={q.chip}
+            value={
+              queueShare != null
+                ? `${(queueShare * 100).toFixed(0)}%`
+                : `${score.queue.pending_mw.toLocaleString(undefined, { maximumFractionDigits: 0 })} MW`
+            }
+            detail={queueDetail}
+          />
+          <SignalCard
+            label="Timelines"
+            tone={t.tone}
+            chip={t.chip}
+            value={yrs(peerYrs)}
+            detail={timelineDetail}
+          />
+          <SignalCard
+            label="Market"
+            tone={m.tone}
+            chip={m.chip}
+            value={pct(neg)}
+            detail={marketDetail}
+          />
         </div>
       </div>
 
-      <div className="section">
-        <h3>Why this grade</h3>
-        <ul>
+      <Details title="Why this grade">
+        <ul className="driver-list">
           {score.verdict.drivers.map((d) => (
             <li key={d}>{d}</li>
           ))}
         </ul>
-      </div>
+      </Details>
 
-      <Details title="Queue detail">
-        <div className="stat-grid">
-          <div className="stat">
-            <b className="mono">{score.queue.pending_projects}</b>
-            <span>Pending projects</span>
-          </div>
-          <div className="stat">
-            <b className="mono">{score.queue.projects_in_counties}</b>
-            <span>All projects in scored counties</span>
-          </div>
-          <div className="stat">
-            <b className="mono">{peerN ?? "—"}</b>
-            <span>Peer sample size</span>
-          </div>
-          <div className="stat">
-            <b className="mono">
-              {score.market_stress?.mean_rt_price_volatility?.toFixed(0) ?? "—"}
-            </b>
-            <span>RT volatility</span>
-          </div>
+      <Details
+        title="Queue & projects"
+        summary={`${score.queue.pending_projects} pending · ${score.queue.pending_mw.toLocaleString(undefined, { maximumFractionDigits: 0 })} MW`}
+      >
+        <div className="meta-row">
+          <span>
+            <b className="mono">{score.queue.pending_projects}</b> pending
+          </span>
+          <span>
+            <b className="mono">{peerN ?? "—"}</b> peer n
+          </span>
+          <span>
+            <b className="mono">{score.market_stress?.mean_rt_price_volatility?.toFixed(0) ?? "—"}</b> RT
+            vol
+          </span>
+          <span>
+            <b className="mono">{score.queue.dominant_cdr_zone ?? "—"}</b> CDR
+          </span>
         </div>
-        {score.market_stress && (
-          <p className="hint" style={{ marginTop: 8 }}>
-            {score.market_stress.note}
-          </p>
-        )}
-        <p style={{ margin: "10px 0 0", fontSize: 13 }}>
-          Scored counties:{" "}
+        <p className="hint" style={{ marginTop: 8 }}>
+          Scored:{" "}
           {score.counties
             .filter((c) => c.in_score !== false)
             .map((c) =>
@@ -191,159 +327,134 @@ export function ResultsPanel({
                 : c.name,
             )
             .join(", ")}
+          {slivers.length > 0
+            ? ` · slivers excluded: ${slivers.join(", ")}`
+            : ""}
         </p>
-        {slivers.length > 0 && (
-          <p className="hint" style={{ marginTop: 6 }}>
-            Map-only slivers (&lt;{Math.round((score.queue.min_score_coverage ?? 0.05) * 100)}%
-            of search area): {slivers.join(", ")} (excluded from queue stats).
-          </p>
+        {score.queue.sample_projects.length > 0 && (
+          <table className="project-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Project</th>
+                <th>Fuel</th>
+                <th>MW</th>
+                <th>County</th>
+              </tr>
+            </thead>
+            <tbody>
+              {score.queue.sample_projects.slice(0, 8).map((p) => (
+                <tr key={p.queue_id}>
+                  <td className="mono">{p.queue_id}</td>
+                  <td>{p.project_name ?? "Untitled"}</td>
+                  <td className="mono">{p.fuel ?? "—"}</td>
+                  <td className="mono">
+                    {p.mw != null ? p.mw.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—"}
+                  </td>
+                  <td>{p.county ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </Details>
 
-      {score.queue.sample_projects.length > 0 && (
-        <Details title={`Sample pending projects${fuel ? ` (${fuel} first)` : ""}`}>
-          <ul style={{ fontSize: 13 }}>
-            {score.queue.sample_projects.slice(0, 8).map((p) => (
-              <li key={p.queue_id}>
-                <span className="mono">{p.queue_id}</span>{" "}
-                {p.project_name ?? "Untitled"} · {p.fuel} · {p.mw ?? "—"} MW · {p.county}
-              </li>
-            ))}
-          </ul>
-        </Details>
-      )}
-
       {score.wire_stress.status === "proxy" ? (
-        <>
-          {score.wire_stress.power_flow?.status === "proxy" && (
-            <Details
-              title={`DC power-flow screen (${score.wire_stress.power_flow.level ?? "proxy"})`}
-              defaultOpen
-            >
-              <div className="stat-grid">
-                <div className="stat">
-                  <b className="mono">
-                    {score.wire_stress.power_flow.max_loading_pu != null
-                      ? score.wire_stress.power_flow.max_loading_pu.toFixed(2)
-                      : "—"}
-                  </b>
-                  <span>Local max loading (pu)</span>
-                </div>
-                <div className="stat">
-                  <b className="mono">
-                    {score.wire_stress.power_flow.max_abs_delta_loading_pu != null
-                      ? score.wire_stress.power_flow.max_abs_delta_loading_pu.toFixed(2)
-                      : "—"}
-                  </b>
-                  <span>Max |Δ loading| on local branches</span>
-                </div>
-                <div className="stat">
-                  <b className="mono">
-                    {score.wire_stress.power_flow.scenario_mw ?? "—"} MW
-                  </b>
-                  <span>
-                    {score.wire_stress.power_flow.scenario_mode ?? "scenario"} ·{" "}
-                    {score.wire_stress.power_flow.hour ?? "16h"}
-                  </span>
-                </div>
-                <div className="stat">
-                  <b className="mono">{score.wire_stress.power_flow.level ?? "—"}</b>
-                  <span>Screen level (not in grade)</span>
-                </div>
+        <Details title="Wire screen · not in grade" summary={wireSummary}>
+          {pf?.status === "proxy" && (
+            <div className="wire-block">
+              <div className="wire-head">
+                <span>DC power flow</span>
+                {pfImpact && (
+                  <span className={`signal-chip tone-${pfImpact.tone}`}>{pfImpact.chip}</span>
+                )}
               </div>
-              <p className="hint" style={{ marginTop: 8 }}>
-                {score.wire_stress.power_flow.note}
+              <p className="hint">
+                ~{pf.scenario_mw ?? "—"} MW {pf.scenario_mode ?? "scenario"} · {pf.hour ?? "16h"} ·
+                local branches only · GridSFM synthetic network, not ERCOT CEII
               </p>
-              {score.wire_stress.power_flow.counties?.[0]?.scenario?.top_branches && (
-                <ul style={{ fontSize: 13, marginTop: 8 }}>
-                  {score.wire_stress.power_flow.counties[0].scenario!.top_branches!.map((b) => (
+              <div className="meter-stack">
+                {pf.max_loading_pu != null && (
+                  <Meter
+                    label="Local max loading (pu)"
+                    value={pf.max_loading_pu}
+                    max={1.2}
+                    tone={
+                      pf.max_loading_pu >= 1
+                        ? "bad"
+                        : pf.max_loading_pu >= 0.75
+                          ? "warn"
+                          : "good"
+                    }
+                  />
+                )}
+                {pf.max_abs_delta_loading_pu != null && (
+                  <Meter
+                    label="Max |Δ loading|"
+                    value={pf.max_abs_delta_loading_pu}
+                    max={0.4}
+                    tone={
+                      pf.max_abs_delta_loading_pu >= 0.15
+                        ? "bad"
+                        : pf.max_abs_delta_loading_pu >= 0.05
+                          ? "warn"
+                          : "good"
+                    }
+                  />
+                )}
+              </div>
+              {topBranches.length > 0 && (
+                <ul className="branch-list">
+                  {topBranches.map((b) => (
                     <li key={b.branch}>
-                      <span className="mono">{b.loading_pu.toFixed(2)} pu</span> · {b.flow_mw} /{" "}
-                      {b.rate_mva} MVA
-                      {b.delta_flow_mw != null ? ` · Δ ${b.delta_flow_mw} MW` : ""}
+                      <Meter
+                        label={`${b.flow_mw} / ${b.rate_mva} MVA${b.delta_flow_mw != null ? ` · Δ ${b.delta_flow_mw}` : ""}`}
+                        value={b.loading_pu}
+                        max={1.2}
+                        tone={
+                          b.loading_pu >= 1 ? "bad" : b.loading_pu >= 0.75 ? "warn" : "neutral"
+                        }
+                      />
                     </li>
                   ))}
                 </ul>
               )}
-            </Details>
+            </div>
           )}
 
-          <Details
-            title={`HIFLD density (${score.wire_stress.density?.level ?? score.wire_stress.level ?? "proxy"})`}
-          >
-            <div className="stat-grid">
-              <div className="stat">
-                <b className="mono">
-                  {(score.wire_stress.density?.density_km_per_km2 ??
-                    score.wire_stress.density_km_per_km2) != null
-                    ? (
-                        score.wire_stress.density?.density_km_per_km2 ??
-                        score.wire_stress.density_km_per_km2
-                      )!.toFixed(3)
-                    : "—"}
-                </b>
-                <span>Line km per km² (coverage-weighted)</span>
+          {(dens?.status === "proxy" || score.wire_stress.density_km_per_km2 != null) && (
+            <div className="wire-block">
+              <div className="wire-head">
+                <span>HIFLD density</span>
+                <span className="signal-chip tone-neutral">{densityChip(densLevel)}</span>
               </div>
-              <div className="stat">
-                <b className="mono">
-                  {(score.wire_stress.density?.vs_texas_median ??
-                    score.wire_stress.vs_texas_median) != null
-                    ? `${(
-                        score.wire_stress.density?.vs_texas_median ??
-                        score.wire_stress.vs_texas_median
-                      )!.toFixed(2)}×`
-                    : "—"}
-                </b>
-                <span>Vs Texas median</span>
-              </div>
-              <div className="stat">
-                <b className="mono">
-                  {(score.wire_stress.density?.hv_share_ge_230kv ??
-                    score.wire_stress.hv_share_ge_230kv) != null
-                    ? pct(
-                        score.wire_stress.density?.hv_share_ge_230kv ??
-                          score.wire_stress.hv_share_ge_230kv,
-                      )
-                    : "—"}
-                </b>
-                <span>Share of line-km ≥230 kV</span>
-              </div>
-              <div className="stat">
-                <b className="mono">
-                  {score.wire_stress.density?.level ?? score.wire_stress.level ?? "—"}
-                </b>
-                <span>Density level</span>
+              <div className="meta-row">
+                <span>
+                  <b className="mono">
+                    {(dens?.density_km_per_km2 ?? score.wire_stress.density_km_per_km2)?.toFixed(3) ??
+                      "—"}
+                  </b>{" "}
+                  km/km²
+                </span>
+                <span>
+                  <b className="mono">
+                    {(dens?.vs_texas_median ?? score.wire_stress.vs_texas_median) != null
+                      ? `${(dens?.vs_texas_median ?? score.wire_stress.vs_texas_median)!.toFixed(2)}×`
+                      : "—"}
+                  </b>{" "}
+                  vs TX median
+                </span>
+                <span>
+                  <b className="mono">
+                    {pct(dens?.hv_share_ge_230kv ?? score.wire_stress.hv_share_ge_230kv)}
+                  </b>{" "}
+                  ≥230 kV
+                </span>
               </div>
             </div>
-            <p className="hint" style={{ marginTop: 8 }}>
-              {score.wire_stress.density?.note ?? score.wire_stress.note}
-            </p>
-          </Details>
-        </>
-      ) : (
-        <Details title="Not in this grade yet">
-          <ul>
-            <li>{score.wire_stress.note}</li>
-            <li>{score.curtailment_risk.note}</li>
-          </ul>
+          )}
         </Details>
-      )}
-
-      {score.wire_stress.status === "proxy" && (
-        <Details title="Still out of the grade">
-          <ul>
-            <li>{score.curtailment_risk.note}</li>
-            <li>
-              AC-OPF / N-1 contingency packs are not built yet. C1 is DC screening on a synthetic
-              GridSFM Texas model.
-            </li>
-          </ul>
-        </Details>
-      )}
-
-      <p className="disclaimer">
-        <a href="/methodology">How this is built</a>
-      </p>
+      ) : null}
     </aside>
   );
 }
