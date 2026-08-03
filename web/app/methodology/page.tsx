@@ -143,9 +143,9 @@ export default function MethodologyPage() {
                   <p>
                     Peer screening-to-energization medians for the dominant CDR zone and fuel,
                     plus trailing LMP stress for the mapped load zone. Queue, timelines, and
-                    prices each contribute to the grade. A HIFLD transmission-line density
-                    block is shown as a proxy only — it does not move the grade. SCED
-                    curtailment and public power-flow scenarios are still out.
+                    prices each contribute to the grade. Wire blocks show HIFLD line density and
+                    a GridSFM DC power-flow screen for your MW — both proxies, neither in the
+                    grade. SCED curtailment is still out.
                   </p>
                 </div>
               </li>
@@ -216,12 +216,20 @@ export default function MethodologyPage() {
                 <strong>Wire density proxy (shown, not graded)</strong>
                 <span>
                   Public HIFLD transmission-line km per county area vs the Texas median.
-                  Approximate geometries; not CEII; not a thermal rating or contingency study.
+                  Approximate geometries; not CEII; not a thermal rating.
                 </span>
               </li>
               <li>
-                <strong>Power-flow / OPF scenarios</strong>
-                <span>Phase C1. Public-model injection/withdrawal sweeps are not built yet.</span>
+                <strong>DC power-flow screen (shown, not graded)</strong>
+                <span>
+                  Microsoft GridSFM Texas model (OSM + EIA synthetic network). We add your MW as
+                  injection (gen) or withdrawal (load), solve a DC power flow, and score local
+                  branches near the county. Not ERCOT CEII; not N-1; slack absorbs imbalance.
+                </span>
+              </li>
+              <li>
+                <strong>AC-OPF / contingency packs</strong>
+                <span>Not built yet. C1 is DC screening only.</span>
               </li>
               <li>
                 <strong>SCED curtailment</strong>

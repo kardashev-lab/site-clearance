@@ -214,57 +214,112 @@ export function ResultsPanel({
       )}
 
       {score.wire_stress.status === "proxy" ? (
-        <Details title={`Wire access proxy (${score.wire_stress.level ?? "proxy"})`} defaultOpen>
-          <div className="stat-grid">
-            <div className="stat">
-              <b className="mono">
-                {score.wire_stress.density_km_per_km2 != null
-                  ? score.wire_stress.density_km_per_km2.toFixed(3)
-                  : "—"}
-              </b>
-              <span>Line km per km² (coverage-weighted)</span>
-            </div>
-            <div className="stat">
-              <b className="mono">
-                {score.wire_stress.vs_texas_median != null
-                  ? `${score.wire_stress.vs_texas_median.toFixed(2)}×`
-                  : "—"}
-              </b>
-              <span>
-                Vs Texas median
-                {score.wire_stress.texas_median_km_per_km2 != null
-                  ? ` (${score.wire_stress.texas_median_km_per_km2.toFixed(3)})`
-                  : ""}
-              </span>
-            </div>
-            <div className="stat">
-              <b className="mono">
-                {score.wire_stress.hv_share_ge_230kv != null
-                  ? pct(score.wire_stress.hv_share_ge_230kv)
-                  : "—"}
-              </b>
-              <span>Share of line-km ≥230 kV</span>
-            </div>
-            <div className="stat">
-              <b className="mono">{score.wire_stress.level ?? "—"}</b>
-              <span>Density level{score.wire_stress.as_of ? ` · as of ${score.wire_stress.as_of}` : ""}</span>
-            </div>
-          </div>
-          <p className="hint" style={{ marginTop: 8 }}>
-            {score.wire_stress.note}
-          </p>
-          {score.wire_stress.counties && score.wire_stress.counties.length > 0 && (
-            <ul style={{ fontSize: 13, marginTop: 8 }}>
-              {score.wire_stress.counties.map((c) => (
-                <li key={c.name}>
-                  {c.name}: {c.line_km.toFixed(0)} km lines ·{" "}
-                  {c.vs_median != null ? `${c.vs_median.toFixed(2)}× median` : "—"} ·{" "}
-                  {Math.round(c.coverage * 100)}% of search area
-                </li>
-              ))}
-            </ul>
+        <>
+          {score.wire_stress.power_flow?.status === "proxy" && (
+            <Details
+              title={`DC power-flow screen (${score.wire_stress.power_flow.level ?? "proxy"})`}
+              defaultOpen
+            >
+              <div className="stat-grid">
+                <div className="stat">
+                  <b className="mono">
+                    {score.wire_stress.power_flow.max_loading_pu != null
+                      ? score.wire_stress.power_flow.max_loading_pu.toFixed(2)
+                      : "—"}
+                  </b>
+                  <span>Local max loading (pu)</span>
+                </div>
+                <div className="stat">
+                  <b className="mono">
+                    {score.wire_stress.power_flow.max_abs_delta_loading_pu != null
+                      ? score.wire_stress.power_flow.max_abs_delta_loading_pu.toFixed(2)
+                      : "—"}
+                  </b>
+                  <span>Max |Δ loading| on local branches</span>
+                </div>
+                <div className="stat">
+                  <b className="mono">
+                    {score.wire_stress.power_flow.scenario_mw ?? "—"} MW
+                  </b>
+                  <span>
+                    {score.wire_stress.power_flow.scenario_mode ?? "scenario"} ·{" "}
+                    {score.wire_stress.power_flow.hour ?? "16h"}
+                  </span>
+                </div>
+                <div className="stat">
+                  <b className="mono">{score.wire_stress.power_flow.level ?? "—"}</b>
+                  <span>Screen level (not in grade)</span>
+                </div>
+              </div>
+              <p className="hint" style={{ marginTop: 8 }}>
+                {score.wire_stress.power_flow.note}
+              </p>
+              {score.wire_stress.power_flow.counties?.[0]?.scenario?.top_branches && (
+                <ul style={{ fontSize: 13, marginTop: 8 }}>
+                  {score.wire_stress.power_flow.counties[0].scenario!.top_branches!.map((b) => (
+                    <li key={b.branch}>
+                      <span className="mono">{b.loading_pu.toFixed(2)} pu</span> · {b.flow_mw} /{" "}
+                      {b.rate_mva} MVA
+                      {b.delta_flow_mw != null ? ` · Δ ${b.delta_flow_mw} MW` : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Details>
           )}
-        </Details>
+
+          <Details
+            title={`HIFLD density (${score.wire_stress.density?.level ?? score.wire_stress.level ?? "proxy"})`}
+          >
+            <div className="stat-grid">
+              <div className="stat">
+                <b className="mono">
+                  {(score.wire_stress.density?.density_km_per_km2 ??
+                    score.wire_stress.density_km_per_km2) != null
+                    ? (
+                        score.wire_stress.density?.density_km_per_km2 ??
+                        score.wire_stress.density_km_per_km2
+                      )!.toFixed(3)
+                    : "—"}
+                </b>
+                <span>Line km per km² (coverage-weighted)</span>
+              </div>
+              <div className="stat">
+                <b className="mono">
+                  {(score.wire_stress.density?.vs_texas_median ??
+                    score.wire_stress.vs_texas_median) != null
+                    ? `${(
+                        score.wire_stress.density?.vs_texas_median ??
+                        score.wire_stress.vs_texas_median
+                      )!.toFixed(2)}×`
+                    : "—"}
+                </b>
+                <span>Vs Texas median</span>
+              </div>
+              <div className="stat">
+                <b className="mono">
+                  {(score.wire_stress.density?.hv_share_ge_230kv ??
+                    score.wire_stress.hv_share_ge_230kv) != null
+                    ? pct(
+                        score.wire_stress.density?.hv_share_ge_230kv ??
+                          score.wire_stress.hv_share_ge_230kv,
+                      )
+                    : "—"}
+                </b>
+                <span>Share of line-km ≥230 kV</span>
+              </div>
+              <div className="stat">
+                <b className="mono">
+                  {score.wire_stress.density?.level ?? score.wire_stress.level ?? "—"}
+                </b>
+                <span>Density level</span>
+              </div>
+            </div>
+            <p className="hint" style={{ marginTop: 8 }}>
+              {score.wire_stress.density?.note ?? score.wire_stress.note}
+            </p>
+          </Details>
+        </>
       ) : (
         <Details title="Not in this grade yet">
           <ul>
@@ -279,8 +334,8 @@ export function ResultsPanel({
           <ul>
             <li>{score.curtailment_risk.note}</li>
             <li>
-              Power-flow / contingency scenarios (Phase C1) are not built yet. This wire block is
-              HIFLD line density only.
+              AC-OPF / N-1 contingency packs are not built yet. C1 is DC screening on a synthetic
+              GridSFM Texas model.
             </li>
           </ul>
         </Details>

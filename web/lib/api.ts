@@ -81,12 +81,62 @@ export type ClearanceScore = {
   wire_stress: {
     status: string;
     note: string;
-    level?: "sparse" | "typical" | "dense";
+    level?: "sparse" | "typical" | "dense" | "calm" | "moderate" | "stressed" | string;
     density_km_per_km2?: number | null;
     texas_median_km_per_km2?: number | null;
     vs_texas_median?: number | null;
     hv_share_ge_230kv?: number | null;
     as_of?: string;
+    density?: {
+      status: string;
+      level?: string;
+      note?: string;
+      density_km_per_km2?: number | null;
+      texas_median_km_per_km2?: number | null;
+      vs_texas_median?: number | null;
+      hv_share_ge_230kv?: number | null;
+      counties?: {
+        name: string;
+        coverage: number;
+        line_km: number;
+        hv_line_km?: number;
+        line_km_per_km2: number;
+        hv_share: number;
+        vs_median: number | null;
+      }[];
+    };
+    power_flow?: {
+      status: string;
+      level?: string;
+      note?: string;
+      scenario_mw?: number;
+      scenario_mode?: string;
+      hour?: string;
+      max_loading_pu?: number | null;
+      max_abs_delta_loading_pu?: number | null;
+      counties?: {
+        name: string;
+        coverage: number;
+        bus_count?: number;
+        local_branch_count?: number;
+        level?: string;
+        scenario?: {
+          hour?: string;
+          mode?: string;
+          mw?: number;
+          max_loading_pu?: number | null;
+          max_abs_delta_loading_pu?: number | null;
+          overload_count?: number | null;
+          top_branches?: {
+            branch: string;
+            loading_pu: number;
+            flow_mw: number;
+            rate_mva: number;
+            delta_flow_mw?: number;
+          }[];
+        } | null;
+      }[];
+    };
     counties?: {
       name: string;
       coverage: number;
