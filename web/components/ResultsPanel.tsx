@@ -213,12 +213,78 @@ export function ResultsPanel({
         </Details>
       )}
 
-      <Details title="Not in this grade yet">
-        <ul>
-          <li>{score.wire_stress.note}</li>
-          <li>{score.curtailment_risk.note}</li>
-        </ul>
-      </Details>
+      {score.wire_stress.status === "proxy" ? (
+        <Details title={`Wire access proxy (${score.wire_stress.level ?? "proxy"})`} defaultOpen>
+          <div className="stat-grid">
+            <div className="stat">
+              <b className="mono">
+                {score.wire_stress.density_km_per_km2 != null
+                  ? score.wire_stress.density_km_per_km2.toFixed(3)
+                  : "—"}
+              </b>
+              <span>Line km per km² (coverage-weighted)</span>
+            </div>
+            <div className="stat">
+              <b className="mono">
+                {score.wire_stress.vs_texas_median != null
+                  ? `${score.wire_stress.vs_texas_median.toFixed(2)}×`
+                  : "—"}
+              </b>
+              <span>
+                Vs Texas median
+                {score.wire_stress.texas_median_km_per_km2 != null
+                  ? ` (${score.wire_stress.texas_median_km_per_km2.toFixed(3)})`
+                  : ""}
+              </span>
+            </div>
+            <div className="stat">
+              <b className="mono">
+                {score.wire_stress.hv_share_ge_230kv != null
+                  ? pct(score.wire_stress.hv_share_ge_230kv)
+                  : "—"}
+              </b>
+              <span>Share of line-km ≥230 kV</span>
+            </div>
+            <div className="stat">
+              <b className="mono">{score.wire_stress.level ?? "—"}</b>
+              <span>Density level{score.wire_stress.as_of ? ` · as of ${score.wire_stress.as_of}` : ""}</span>
+            </div>
+          </div>
+          <p className="hint" style={{ marginTop: 8 }}>
+            {score.wire_stress.note}
+          </p>
+          {score.wire_stress.counties && score.wire_stress.counties.length > 0 && (
+            <ul style={{ fontSize: 13, marginTop: 8 }}>
+              {score.wire_stress.counties.map((c) => (
+                <li key={c.name}>
+                  {c.name}: {c.line_km.toFixed(0)} km lines ·{" "}
+                  {c.vs_median != null ? `${c.vs_median.toFixed(2)}× median` : "—"} ·{" "}
+                  {Math.round(c.coverage * 100)}% of search area
+                </li>
+              ))}
+            </ul>
+          )}
+        </Details>
+      ) : (
+        <Details title="Not in this grade yet">
+          <ul>
+            <li>{score.wire_stress.note}</li>
+            <li>{score.curtailment_risk.note}</li>
+          </ul>
+        </Details>
+      )}
+
+      {score.wire_stress.status === "proxy" && (
+        <Details title="Still out of the grade">
+          <ul>
+            <li>{score.curtailment_risk.note}</li>
+            <li>
+              Power-flow / contingency scenarios (Phase C1) are not built yet. This wire block is
+              HIFLD line density only.
+            </li>
+          </ul>
+        </Details>
+      )}
 
       <p className="disclaimer">
         <a href="/methodology">How this is built</a>

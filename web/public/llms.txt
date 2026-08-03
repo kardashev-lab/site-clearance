@@ -2,7 +2,7 @@
 
 > Draw a search area in ERCOT. Get a county-level strong / mixed / weak grade from public GIS queue data, measured interconnection timelines, and LMP stress. Not an official ERCOT study.
 
-Generator GIS filings name a county, not a lat/lon, so the grade is county-resolution. Wire stress and SCED curtailment are not in the v1 score.
+Generator GIS filings name a county, not a lat/lon, so the grade is county-resolution. A HIFLD transmission-line density proxy is shown on results but does not enter the grade. SCED curtailment and public power-flow scenarios are not in the score.
 
 ## Pages
 

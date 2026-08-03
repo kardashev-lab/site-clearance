@@ -78,7 +78,25 @@ export type ClearanceScore = {
     ercot_avg_pct_hours_rt_negative?: number | null;
     note: string;
   } | null;
-  wire_stress: { status: string; note: string };
+  wire_stress: {
+    status: string;
+    note: string;
+    level?: "sparse" | "typical" | "dense";
+    density_km_per_km2?: number | null;
+    texas_median_km_per_km2?: number | null;
+    vs_texas_median?: number | null;
+    hv_share_ge_230kv?: number | null;
+    as_of?: string;
+    counties?: {
+      name: string;
+      coverage: number;
+      line_km: number;
+      hv_line_km?: number;
+      line_km_per_km2: number;
+      hv_share: number;
+      vs_median: number | null;
+    }[];
+  };
   curtailment_risk: { status: string; note: string };
   large_load: Record<string, unknown> | null;
   scored_at: string;

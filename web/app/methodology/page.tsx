@@ -143,8 +143,9 @@ export default function MethodologyPage() {
                   <p>
                     Peer screening-to-energization medians for the dominant CDR zone and fuel,
                     plus trailing LMP stress for the mapped load zone. Queue, timelines, and
-                    prices each contribute to the grade. Wire physics and SCED curtailment are
-                    not in yet.
+                    prices each contribute to the grade. A HIFLD transmission-line density
+                    block is shown as a proxy only — it does not move the grade. SCED
+                    curtailment and public power-flow scenarios are still out.
                   </p>
                 </div>
               </li>
@@ -212,8 +213,15 @@ export default function MethodologyPage() {
             <h2>What stays out (on purpose)</h2>
             <ul className="doc-out">
               <li>
-                <strong>Wire / power-flow stress</strong>
-                <span>Phase C. Public-model OPF scenarios are not in the grade.</span>
+                <strong>Wire density proxy (shown, not graded)</strong>
+                <span>
+                  Public HIFLD transmission-line km per county area vs the Texas median.
+                  Approximate geometries; not CEII; not a thermal rating or contingency study.
+                </span>
+              </li>
+              <li>
+                <strong>Power-flow / OPF scenarios</strong>
+                <span>Phase C1. Public-model injection/withdrawal sweeps are not built yet.</span>
               </li>
               <li>
                 <strong>SCED curtailment</strong>
