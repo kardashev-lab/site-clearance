@@ -38,7 +38,7 @@ function Details({
         onClick={() => setOpen((v) => !v)}
       >
         <span className="details-toggle-text">
-          <span>{title}</span>
+          <span className="results-heading">{title}</span>
           {!open && summary ? <span className="details-summary">{summary}</span> : null}
         </span>
         <span className="mono" aria-hidden="true">
@@ -260,7 +260,7 @@ export function ResultsPanel({
       </p>
 
       <div className="section">
-        <h3>Grade signals</h3>
+        <h3 className="results-heading">Grade signals</h3>
         <div className="signal-row">
           <SignalCard
             label="Queue"
